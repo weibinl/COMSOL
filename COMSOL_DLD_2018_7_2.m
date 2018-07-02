@@ -9,6 +9,7 @@ a=1;
 model = ModelUtil.create('Model');
 comp1=model.component.create('comp1',true);
 geom1 = model.component('comp1').geom.create('geom1',3);
+model.component('comp1').geom('geom1').lengthUnit([native2unicode(hex2dec({'00' 'b5'}), 'unicode') 'm']); %set the unit to um
 wp1 = geom1.feature.create('wp1', 'WorkPlane');
 wp1.set('planetype', 'quick');
 wp1.set('quickplane', 'xy');
@@ -53,6 +54,67 @@ model.component('comp1').mesh('mesh1').automatic(true);
 model.component('comp1').mesh('mesh1').autoMeshSize(3);
 mesh1.run;
 mphmesh(model)
+% end of mesh generation 
+
+
+%% material setup (water, liquid, pre-built in the COMSOL 5.3 Version 
+model.component('comp1').material.create('mat1', 'Common');
+model.component('comp1').material('mat1').label('Water, liquid');
+model.component('comp1').material('mat1').set('family', 'water');
+model.component('comp1').material('mat1').propertyGroup('def').set('dynamicviscosity', 'eta(T[1/K])[Pa*s]');
+model.component('comp1').material('mat1').propertyGroup('def').set('ratioofspecificheat', '1.0');
+model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', '5.5e-6[S/m]');
+model.component('comp1').material('mat1').propertyGroup('def').set('heatcapacity', 'Cp(T[1/K])[J/(kg*K)]');
+model.component('comp1').material('mat1').propertyGroup('def').set('density', 'rho(T[1/K])[kg/m^3]');
+model.component('comp1').material('mat1').propertyGroup('def').set('thermalconductivity', 'k(T[1/K])[W/(m*K)]');
+model.component('comp1').material('mat1').propertyGroup('def').set('soundspeed', 'cs(T[1/K])[m/s]');
+model.component('comp1').material('mat1').propertyGroup('def').func.create('eta', 'Piecewise');
+model.component('comp1').material('mat1').propertyGroup('def').func('eta').set('funcname', 'eta');
+model.component('comp1').material('mat1').propertyGroup('def').func('eta').set('arg', 'T');
+model.component('comp1').material('mat1').propertyGroup('def').func('eta').set('extrap', 'constant');
+model.component('comp1').material('mat1').propertyGroup('def').func('eta').set('pieces', {'273.15' '413.15' '1.3799566804-0.021224019151*T^1+1.3604562827E-4*T^2-4.6454090319E-7*T^3+8.9042735735E-10*T^4-9.0790692686E-13*T^5+3.8457331488E-16*T^6'; '413.15' '553.75' '0.00401235783-2.10746715E-5*T^1+3.85772275E-8*T^2-2.39730284E-11*T^3'});
+model.component('comp1').material('mat1').propertyGroup('def').func.create('Cp', 'Piecewise');
+model.component('comp1').material('mat1').propertyGroup('def').func('Cp').set('funcname', 'Cp');
+model.component('comp1').material('mat1').propertyGroup('def').func('Cp').set('arg', 'T');
+model.component('comp1').material('mat1').propertyGroup('def').func('Cp').set('extrap', 'constant');
+model.component('comp1').material('mat1').propertyGroup('def').func('Cp').set('pieces', {'273.15' '553.75' '12010.1471-80.4072879*T^1+0.309866854*T^2-5.38186884E-4*T^3+3.62536437E-7*T^4'});
+model.component('comp1').material('mat1').propertyGroup('def').func.create('rho', 'Piecewise');
+model.component('comp1').material('mat1').propertyGroup('def').func('rho').set('funcname', 'rho');
+model.component('comp1').material('mat1').propertyGroup('def').func('rho').set('arg', 'T');
+model.component('comp1').material('mat1').propertyGroup('def').func('rho').set('extrap', 'constant');
+model.component('comp1').material('mat1').propertyGroup('def').func('rho').set('pieces', {'273.15' '553.75' '838.466135+1.40050603*T^1-0.0030112376*T^2+3.71822313E-7*T^3'});
+model.component('comp1').material('mat1').propertyGroup('def').func.create('k', 'Piecewise');
+model.component('comp1').material('mat1').propertyGroup('def').func('k').set('funcname', 'k');
+model.component('comp1').material('mat1').propertyGroup('def').func('k').set('arg', 'T');
+model.component('comp1').material('mat1').propertyGroup('def').func('k').set('extrap', 'constant');
+model.component('comp1').material('mat1').propertyGroup('def').func('k').set('pieces', {'273.15' '553.75' '-0.869083936+0.00894880345*T^1-1.58366345E-5*T^2+7.97543259E-9*T^3'});
+model.component('comp1').material('mat1').propertyGroup('def').func.create('cs', 'Interpolation');
+model.component('comp1').material('mat1').propertyGroup('def').func('cs').set('sourcetype', 'user');
+model.component('comp1').material('mat1').propertyGroup('def').func('cs').set('source', 'table');
+model.component('comp1').material('mat1').propertyGroup('def').func('cs').set('funcname', 'cs');
+model.component('comp1').material('mat1').propertyGroup('def').func('cs').set('table', {'273' '1403';'278' '1427'; '283' '1447';'293' '1481';'303' '1507';'313' '1526';'323' '1541';'333' '1552';'343' '1555';'353' '1555';'363' '1550';'373' '1543'});
+model.component('comp1').material('mat1').propertyGroup('def').func('cs').set('interp', 'piecewisecubic');
+model.component('comp1').material('mat1').propertyGroup('def').func('cs').set('extrap', 'const');
+model.component('comp1').material('mat1').propertyGroup('def').addInput('temperature');
+model.component('comp1').material('mat1').set('family', 'water');
+% end of material setup
+%% Start of Physics Setup
+model.component('comp1').physics.create('spf', 'LaminarFlow', 'geom1');
+
+%end of physics setup 
+
+%% start of study setup
+
+% end of study setup 
+
+%% start of simulation 
+
+% end of simulation 
+
+%% start of post processing 
+
+%end of post processing 
+
 %% start of file saving
 % save to mph file in the following destination with file name 'test.mph'
 % 
