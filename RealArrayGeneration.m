@@ -19,33 +19,64 @@ DownstreamGap=17;
 TiltRatio=42; %lateral displacement vs lateral movement per bump, or # of rows required to displace one post in column
 ColumnNumber=3; %one side, we built the symmetric model about the center bypass channel to reduce the required calculation time, also this is the number of channel, the post number should be ColumnNumber-1
 RowNumber=TiltRatio;
-BypassChannelWidth=LateralGap;
+MinimumBypassChannelWidth=18.403;
 LateralDisplacementPerRow=(DownstreamGap+PostDiameter)/TiltRatio;
 % calculate the position of the main post 
 % set the middle of by bypass channel to be (0,0), flow from top to bottom, and the model is built from bottom to top 
 
-XPosFirstPost=BypassChannelWidth/2+PostDiameter/2;  %define the first post of the array
+XPosFirstPost=MinimumBypassChannelWidth/2+PostDiameter/2;  %define the first post of the array
 YPosFirstPost=PostDiameter/2;
 
 wp2 = geom1.feature.create('wp2', 'WorkPlane');  %generate the workplane in which the post will be extruded from 
 wp2.set('planetype', 'quick');
 wp2.set('quickplane', 'xy');
 Array=wp2.geom.selection().create("Array","CumulativeSelection");
-for RN=1:1:RowNumber
+for RN=2:1:RowNumber-1
     for CN=1:1:ColumnNumber
-wp2.geom.feature.create("Post"+RN+CN,'Square');
-wp2.geom.feature("Post"+RN+CN).set('size',PostDiameter/2*sqrt(2));
-wp2.geom.feature("Post"+RN+CN).set('base','center');
-wp2.geom.feature("Post"+RN+CN).set('pos',[XPosFirstPost+(PostDiameter+LateralGap)*(CN-1)+LateralDisplacementPerRow*(RN-1) YPosFirstPost+(PostDiameter+DownstreamGap)*(RN-1)]); %remember, the position is the center point
-wp2.geom.feature("Post"+RN+CN).set('rot',45); %rotate around the bottom-left vertex
-wp2.geom.feature("Post"+RN+CN).set("contributeto","Array"); 
+        wp2.geom.feature.create("Post"+RN+CN,'Square');
+        wp2.geom.feature("Post"+RN+CN).set('size',PostDiameter/2*sqrt(2));
+        wp2.geom.feature("Post"+RN+CN).set('base','center');
+        wp2.geom.feature("Post"+RN+CN).set('pos',[XPosFirstPost+(PostDiameter+LateralGap)*(CN-1)+LateralDisplacementPerRow*(RN-1) YPosFirstPost+(PostDiameter+DownstreamGap)*(RN-1)]); %remember, the position is the center point
+        wp2.geom.feature("Post"+RN+CN).set('rot',45); %rotate around the bottom-left vertex
+        wp2.geom.feature("Post"+RN+CN).set("contributeto","Array"); 
     end;
 end;
+
+for CN=1:1:ColumnNumber
+    RN=42;
+    wp2.geom.feature.create("Post"+RN+CN,'Square');
+    wp2.geom.feature("Post"+RN+CN).set('size',PostDiameter/2*sqrt(2));
+    wp2.geom.feature("Post"+RN+CN).set('base','center');
+    wp2.geom.feature("Post"+RN+CN).set('pos',[XPosFirstPost+(PostDiameter+LateralGap)*(CN-1) YPosFirstPost+(PostDiameter+DownstreamGap)*(RN-1)]); %remember, the position is the center point
+    wp2.geom.feature("Post"+RN+CN).set('rot',45); %rotate around the bottom-left vertex
+    wp2.geom.feature("Post"+RN+CN).set("contributeto","Array"); 
+end
 %generate the boundary & other geometry
-wp2.geom.feature.create("s1",'Square');
-wp2.geom.feature("s1").set('size',3);
-wp2.geom.feature("s1").set('pos',[10 10]);
-wp2.geom.feature("s1").set("contributeto","Array");
+
+ByPassWidth=zeros(RowNumber,1);
+
+for i=1:1:RowNumber %determine the bypass channel width
+    ByPassWidth(i,1)=(-0.0011*i^2+0.2088*i+18.403)/2;  %remember, only half 
+end 
+
+for i=2:1:RowNumber %generate the bypass channel wide post (post section)
+    wp2.geom.feature.create("ByPassPost"+i,'Square');
+    wp2.geom.feature("ByPassPost"+i).set('size',PostDiameter/2*sqrt(2));
+    wp2.geom.feature("ByPassPost"+i).set('base','center');
+    wp2.geom.feature("ByPassPost"+i).set('pos',[ByPassWidth(i)+PostDiameter/2 YPosFirstPost+(PostDiameter+DownstreamGap)*(i-2)]); %remember, the position is the center point
+    wp2.geom.feature("ByPassPost"+i).set('rot',45); %rotate around the bottom-left vertex
+    wp2.geom.feature("ByPassPost"+i).set("contributeto","Array"); 
+end 
+
+for i=2:1:RowNumber %generate the bypass channel wide post (rectangle section)
+     wp2.geom.feature.create("ByPassPost_Rec"+i,'Rectangle');
+     wp2.geom.feature("ByPassPost_Rec"+i).set('size',[XPosFirstPost+LateralDisplacementPerRow*(i-1)-ByPassWidth(i)-PostDiameter/2 PostDiameter]);
+     wp2.geom.feature("ByPassPost_Rec"+i).set('pos',[ByPassWidth(i)+PostDiameter/2 YPosFirstPost+(PostDiameter+DownstreamGap)*(i-2)-PostDiameter/2]);
+     wp2.geom.feature("ByPassPost_Rec"+i).set("contributeto","Array")
+end 
+
+
+
 geom1.run
 ext2 = geom1.feature.create('ext2', 'Extrude');
 ext2.set('distance', '10');  %extrude the post and the boundary
@@ -54,13 +85,14 @@ ext2.set('distance', '10');  %extrude the post and the boundary
 
 
 %% generate the simulation area (the outter most area) 
-WidthofRegion=(ColumnNumber+1)*(LateralGap+PostDiameter)+BypassChannelWidth/2+PostDiameter/2;
+WidthofRegion=(ColumnNumber+1)*(LateralGap+PostDiameter)+MinimumBypassChannelWidth/2+PostDiameter/2;
 HeighofRegion=RowNumber*(DownstreamGap+PostDiameter);
 wp1 = geom1.feature.create('wp1', 'WorkPlane');
 wp1.set('planetype', 'quick');
 wp1.set('quickplane', 'xy');
 s=wp1.geom.feature.create('s','Rectangle');
 s.set('size',[WidthofRegion HeighofRegion]);
+s.set('pos',[0 0]);
 geom1.run;
 ext1 = geom1.feature.create('ext1', 'Extrude');
 ext1.set('distance', '10');%%extrude the simulation area
